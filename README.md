@@ -1,12 +1,37 @@
+<div align="center">
+
 # 不刷屏、不潜水，主动回复刚刚好
 
-简体中文 | [English](README_EN.md)
+<img src="https://count.getloli.com/@astrbot_plugin_active_reply_ctl?name=astrbot_plugin_active_reply_ctl&theme=rule34&padding=6&offset=0&align=top&scale=1&pixelated=1&darkmode=auto" alt="count" />
 
 **AstrBot 主动回复冷却限频插件：概率抽签 + 群级冷却 + 对话延续 + 关键词必回，让 Bot 像真人一样自然地混迹群聊。**
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![AstrBot](https://img.shields.io/badge/AstrBot-v4.x-orange)
+![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D4.17-5865f2?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.0-22c55e?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-aiocqhttp-f97316?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
+
+简体中文 | [English](README_EN.md)
+
+<img src="assets/logo.jpg" alt="主动回复冷却限频 Logo" width="180">
+
+</div>
 
 > 📦 **规范性说明**：本仓库是一个 [AstrBot](https://github.com/AstrBotDevs/AstrBot) **插件组件仓库**，仅作为 AstrBot 的插件使用，不能独立运行。请将本插件安装至 AstrBot 的 `data/plugins/` 目录，由 AstrBot 框架加载并调度。
+
+---
+
+## 目录
+
+- [它解决什么问题](#它解决什么问题)
+- [功能一览](#功能一览)
+- [安装](#安装)
+- [配置项](#配置项)
+- [工作机制](#工作机制)
+- [调参建议](#调参建议)
+- [注意事项](#注意事项)
+- [版本历史](#版本历史)
 
 ---
 
@@ -21,7 +46,7 @@ AstrBot 原生的「群聊上下文感知 → 主动回复」只有一条**纯�
 
 ---
 
-## 功能
+## 功能一览
 
 | 触发路径 | 触发方式 | 频率控制 | 适用场景 |
 |----------|----------|----------|----------|
@@ -59,12 +84,14 @@ cd AstrBot/data/plugins
 git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 ```
 
+> [!TIP]
 > 本插件无第三方依赖，无需额外安装 requirements。
 
 ### 启用前必须做的一件事
 
-在 AstrBot WebUI 中**关闭原生主动回复**，避免双重触发：
-
+> [!WARNING]
+> 在 AstrBot WebUI 中**关闭原生主动回复**，避免双重触发：
+>
 > 配置页 → 群聊上下文感知 → 主动回复开关 → **关闭**
 
 ---
@@ -142,17 +169,30 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 
 - **冷却只在真正触发时启动**：被拦截的消息不会延长冷却，不会越拦越哑
 - **三层冷却互不干扰**：群级冷却只约束概率路径；延续与关键词仅受各自成员级冷却限制
-- **内存自动清理**：每命中 100 次清理一次过期冷却记录，冷却记录过期后自动释放，无内存泄漏风险
+- **内存自动清理**：每命中 100 次清理一次过期冷却记录，无内存泄漏风险
 - **抽签在后，硬检查在前**：占用守卫、白名单、长度门槛先过滤，不浪费抽签机会
+
+---
+
+## 调参建议
+
+| 目标 | 建议 |
+|------|------|
+| 大群保持克制 | `possibility` 保持 `0.02`，`cooldown_seconds` 保持 `180` |
+| 小群更活跃 | `possibility` 调到 `0.05~0.1`，群冷却降到 `60~120` |
+| 追问总是漏回 | 确认 `continue_possibility = 1.0`，窗口拉长到 `180` |
+| 只想被叫名字时回 | 清空 `possibility` 路径（`0`），保留关键词必回 |
+| 总在别人聊天时插话 | 确认 `ignore_when_chatting = true` |
 
 ---
 
 ## 注意事项
 
-- 本仓库仅为 AstrBot 插件组件，需随 AstrBot 一起使用，无法独立运行
+> [!IMPORTANT]
+> 本仓库仅为 AstrBot 插件组件，需随 AstrBot 一起使用，无法独立运行。
+
 - 必须关闭原生「群聊上下文感知 → 主动回复」，否则会双重触发
 - @Bot / 唤醒前缀 / 引用 Bot 的消息由 AstrBot 主链路处理，本插件只负责「没有 @ Bot 的消息」的主动接话
-- 概率与冷却的建议调法：`possibility` 定期望频次，`cooldown_seconds` 兜底封顶；大群 `0.02` + `180s`，小群想更活跃可调 `0.05~0.1`
 - 支持 AstrBot WebUI 可视化配置（基于 `_conf_schema.json`），保存即热重载
 
 ---
@@ -181,6 +221,14 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 - 首个正式版本：群级冷却、白名单、最小消息长度、防回环与提示词模板
 
 完整变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+---
+
+## 致谢
+
+- 插件图标由 AI（Gemini）生成
+- 主页排版参考 [astrbot_plugin_get_px](https://github.com/shitianyaa/astrbot_plugin_get_px) 的组织方式
+- 访客计数由 [Moe Counter](https://github.com/journey-ad/Moe-Counter) 提供
 
 ---
 
