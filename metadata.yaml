@@ -4,7 +4,7 @@ desc: 主动回复冷却限频：概率抽签 + 群级冷却，避免"概率高�
 short_desc: 主动回复概率+冷却限频
 author: Randy Lua
 repo: https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl
-version: 1.4.0
+version: 1.4.1
 astrbot_version: ">=4.17.0"
 support_platforms:
   - aiocqhttp

@@ -7,7 +7,7 @@
 **AstrBot 主动回复冷却限频插件：概率抽签 + 群级冷却 + 对话延续 + 关键词必回，让 Bot 像真人一样自然地混迹群聊。**
 
 ![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D4.17-5865f2?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.4.0-22c55e?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.1-22c55e?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-aiocqhttp-f97316?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
@@ -198,6 +198,9 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 ---
 
 ## 版本历史
+
+### v1.4.1
+- 加个 logo：新增插件图标 `logo.png`，AstrBot WebUI 插件市场与插件列表显示自定义图标
 
 ### v1.4.0
 - 修复延续漏回：延续触发概率 `0.5` → `1.0`（此前抽签会随机丢掉一半追问）

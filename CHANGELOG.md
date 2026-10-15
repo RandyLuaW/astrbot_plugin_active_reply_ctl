@@ -2,6 +2,12 @@
 
 所有重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.4.1] - 2026-10-15
+
+### 新增
+
+- 加个 logo：新增插件图标 `logo.png`（512×512），AstrBot WebUI 插件市场与插件列表显示自定义图标。
+
 ## [1.4.0] - 2026-10-15
 
 ### 修复

@@ -7,7 +7,7 @@
 **An AstrBot plugin for rate-limited proactive replies: probability draw + group cooldown + conversation continuation + keyword triggers — so your bot mingles in group chats naturally, like a real person.**
 
 ![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D4.17-5865f2?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.4.0-22c55e?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.4.1-22c55e?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-aiocqhttp-f97316?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
@@ -198,6 +198,9 @@ On trigger, the plugin calls `event.request_llm(...)` with the current persona a
 ---
 
 ## Version History
+
+### v1.4.1
+- Add a logo: new plugin icon `logo.png` so the AstrBot WebUI marketplace and plugin list show a custom icon
 
 ### v1.4.0
 - Fixed missed continuation replies: continuation probability `0.5` → `1.0` (the draw used to randomly drop half of the follow-ups)

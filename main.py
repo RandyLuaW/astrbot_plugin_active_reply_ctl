@@ -21,7 +21,7 @@ from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import At, Image, Reply
 from astrbot.api.star import Context, Star
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 LEGACY_CONFIG_NAME = "config.json"  # 旧版独立配置文件，仅在 AstrBot 未注入配置时兜底
 
 DEFAULT_CONFIG: dict = {
