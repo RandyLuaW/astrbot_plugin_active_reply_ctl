@@ -1,0 +1,92 @@
+{
+  "enable": {
+    "description": "总开关",
+    "type": "bool",
+    "hint": "关闭后插件不再监听群消息。原生「群聊上下文感知→主动回复」需保持关闭，避免双重回复。",
+    "default": true
+  },
+  "possibility": {
+    "description": "主动回复概率 (0~1)",
+    "type": "float",
+    "hint": "概率路径的抽签命中率，如 0.02 = 2%。抽中后还需通过群级冷却与对话占用守卫才会真正回复。",
+    "default": 0.02
+  },
+  "cooldown_seconds": {
+    "description": "群级冷却（秒）",
+    "type": "int",
+    "hint": "同一个群两次「概率路径」主动回复的最小间隔。0 = 不冷却。",
+    "default": 180
+  },
+  "whitelist": {
+    "description": "群白名单",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "hint": "填入群号（字符串），仅这些群生效。留空 = 所有群生效。",
+    "default": []
+  },
+  "min_message_len": {
+    "description": "最小消息长度",
+    "type": "int",
+    "hint": "纯文本消息少于此长度时概率路径不触发（含图片的消息不受限，关键词/延续路径恒为 1）。",
+    "default": 2
+  },
+  "continue_window_seconds": {
+    "description": "对话延续窗口（秒）",
+    "type": "int",
+    "hint": "@/引用/唤醒 bot 后 N 秒内，该成员的后续消息走延续路径。0 = 关闭延续。",
+    "default": 120
+  },
+  "continue_possibility": {
+    "description": "延续触发概率 (0~1)",
+    "type": "float",
+    "hint": "延续窗口内的触发概率，1.0 = 必回（推荐，避免漏回追问）。绕过群级冷却，仅受成员级冷却限制。",
+    "default": 1.0
+  },
+  "continue_cooldown_seconds": {
+    "description": "延续成员冷却（秒）",
+    "type": "int",
+    "hint": "同一成员两次延续回复的最小间隔，防个人刷屏，不影响他人。",
+    "default": 10
+  },
+  "ignore_when_chatting": {
+    "description": "对话占用守卫",
+    "type": "bool",
+    "hint": "开启后：群内任一成员处于延续窗口内（bot 正在与人对话）时，概率路径静默，不插话第三方无关内容。不影响关键词与延续路径。",
+    "default": true
+  },
+  "keyword_list": {
+    "description": "必回关键词",
+    "type": "list",
+    "items": {
+      "type": "string"
+    },
+    "hint": "消息包含任一关键词即触发回复（如机器人昵称）。绕过群级冷却与概率抽签。留空 = 不启用。",
+    "default": []
+  },
+  "keyword_possibility": {
+    "description": "关键词触发概率 (0~1)",
+    "type": "float",
+    "hint": "关键词命中后的触发概率，1.0 = 必回。",
+    "default": 1.0
+  },
+  "keyword_cooldown_seconds": {
+    "description": "关键词成员冷却（秒）",
+    "type": "int",
+    "hint": "同一成员两次关键词触发的最小间隔，防刷屏。",
+    "default": 8
+  },
+  "prompt_template": {
+    "description": "概率路径提示词模板",
+    "type": "text",
+    "hint": "概率路径触发时发给 LLM 的提示词。可用占位符：{message} = 触发消息文本。",
+    "default": "群聊里有一条消息（没有@你）：\n{message}\n\n请保持当前人设，自然、简短地接一句。不要客服腔、不要长篇大论。"
+  },
+  "continue_prompt_template": {
+    "description": "延续路径提示词模板",
+    "type": "text",
+    "hint": "延续对话时发给 LLM 的提示词。可用占位符：{message} = 消息文本，{member} = 成员昵称。",
+    "default": "你正在和群成员【{member}】持续对话中，这是他/她刚发来的后续消息（没有@你）：\n{message}\n\n请延续你们正在进行的对话、回应这个人。保持当前人设，简短自然。不要客服腔。"
+  }
+}
