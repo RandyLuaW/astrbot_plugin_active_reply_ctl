@@ -14,7 +14,7 @@
 
 简体中文 | [English](README_EN.md)
 
-<img src="assets/logo.jpg" alt="主动回复冷却限频 Logo" width="180">
+<img src="logo.png" alt="主动回复冷却限频 Logo" width="180">
 
 </div>
 

@@ -14,7 +14,7 @@
 
 [简体中文](README.md) | English
 
-<img src="assets/logo.jpg" alt="Active Reply Control Logo" width="180">
+<img src="logo.png" alt="Active Reply Control Logo" width="180">
 
 </div>
 
