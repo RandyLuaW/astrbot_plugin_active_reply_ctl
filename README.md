@@ -1,5 +1,7 @@
 # 不刷屏、不潜水，主动回复刚刚好
 
+简体中文 | [English](README_EN.md)
+
 **AstrBot 主动回复冷却限频插件：概率抽签 + 群级冷却 + 对话延续 + 关键词必回，让 Bot 像真人一样自然地混迹群聊。**
 
 ![Version](https://img.shields.io/badge/version-1.4.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![AstrBot](https://img.shields.io/badge/AstrBot-v4.x-orange)
@@ -42,11 +44,15 @@ AstrBot 原生的「群聊上下文感知 → 主动回复」只有一条**纯�
 
 ## 安装
 
-### 方式一：Releases 下载（推荐）
+### 方式一：插件市场（推荐）
+
+AstrBot WebUI → 插件管理 → 从插件市场安装，搜索 `astrbot_plugin_active_reply_ctl` 或「主动回复冷却限频」。
+
+### 方式二：Releases 下载
 
 前往 [Releases](../../releases) 页下载最新版安装包（`astrbot_plugin_active_reply_ctl-vX.Y.Z.zip`），在 AstrBot WebUI「插件管理 → 上传安装」中导入。
 
-### 方式二：手动克隆
+### 方式三：手动克隆
 
 ```bash
 cd AstrBot/data/plugins
