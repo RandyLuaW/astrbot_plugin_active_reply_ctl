@@ -42,18 +42,16 @@ AstrBot 原生的「群聊上下文感知 → 主动回复」只有一条**纯�
 
 ## 安装
 
-### 方式一：插件市场（推荐）
+### 方式一：Releases 下载（推荐）
 
-AstrBot WebUI → 插件管理 → 从插件市场安装，搜索 `astrbot_plugin_active_reply_ctl`。
+前往 [Releases](../../releases) 页下载最新版安装包（`astrbot_plugin_active_reply_ctl-vX.Y.Z.zip`），在 AstrBot WebUI「插件管理 → 上传安装」中导入。
 
-### 方式二：手动安装
+### 方式二：手动克隆
 
 ```bash
 cd AstrBot/data/plugins
 git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 ```
-
-或在 [Releases](../../releases) 页下载安装包，在 WebUI「插件管理 → 上传安装」中导入。
 
 > 本插件无第三方依赖，无需额外安装 requirements。
 

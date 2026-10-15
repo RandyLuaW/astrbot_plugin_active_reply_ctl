@@ -3,4 +3,5 @@ display_name: 主动回复冷却限频
 desc: 主动回复冷却限频：概率抽签 + 群级冷却，避免"概率高刷屏、概率低哑巴"。需关闭原生「群聊上下文感知→主动回复」避免双重触发。
 short_desc: 主动回复概率+冷却限频
 author: Randy Lua
+repo: https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl
 version: 1.4.0
