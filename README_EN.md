@@ -7,7 +7,7 @@
 **An AstrBot plugin for rate-limited proactive replies: probability draw + group cooldown + conversation continuation + keyword triggers — so your bot mingles in group chats naturally, like a real person.**
 
 ![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D4.17-5865f2?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.4.1-22c55e?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-22c55e?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-aiocqhttp-f97316?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
@@ -42,7 +42,7 @@ AstrBot's built-in "Group Context Awareness → Proactive Reply" offers only a *
 - **Higher probability** → the bot keeps butting in in active groups, which is annoying;
 - **Lower probability** → the bot practically never speaks, so why enable it at all.
 
-This plugin adds a **group-level cooldown** and a **conversation-occupancy guard** on top of the probability draw, plus two stable trigger paths — "conversation continuation" and "keyword reply" — balancing liveliness and restraint.
+This plugin adds a **group-level cooldown** and a **conversation-occupancy guard** on top of the probability draw, plus two stable trigger paths — "conversation continuation" and "keyword reply". Since v1.5.0 the proactive/continuation paths also carry an **addressee check (SKIP)**: the LLM reads recent group-chat context to decide whether a message is really addressed to it, and silently skips unrelated chatter instead of butting in.
 
 ---
 
@@ -50,14 +50,15 @@ This plugin adds a **group-level cooldown** and a **conversation-occupancy guard
 
 | Trigger Path | How It Fires | Rate Control | Best For |
 |----------|----------|----------|----------|
-| 🎲 Proactive reply | Probability draw hit | Group cooldown (default 180s) + occupancy guard | Occasional natural remarks to stay present |
-| 💬 Conversation continuation | Follow-up messages within the window after a member @mentions/quotes/wakes the bot | Member-level cooldown (default 10s), replies by default within the window | Keeping follow-up questions alive |
-| 🔑 Keyword reply | Message contains a configured keyword | Member-level cooldown (default 8s), replies by default | Always responding to its nickname |
+| 🎲 Proactive reply | Probability draw hit | Group cooldown (default 180s) + occupancy guard + SKIP check | Occasional natural remarks to stay present |
+| 💬 Conversation continuation | Follow-up messages within the window after a member @mentions/quotes/wakes the bot | Member-level cooldown (default 10s), replies by default within the window + SKIP check | Keeping follow-up questions alive |
+| 🔑 Keyword reply | Message contains a configured keyword | Member-level cooldown (default 8s), replies by default (no SKIP check) | Always responding to its nickname |
 
 ### Other Built-in Guards
 
 | Guard | Effect |
 |------|------|
+| SKIP silent bail-out | The LLM reads recent group-chat context to decide whether the message is addressed to the bot; if not, it outputs `[SKIP]` and the plugin silently drops the reply (nothing sent, nothing stored in conversation history) |
 | Conversation-occupancy guard | While someone is talking with the bot, the probability path stays silent and won't butt into unrelated chatter |
 | Talking-to-others filter | No random interjections when a message @mentions or quotes someone else (the continuation path likewise bails out) |
 | Anti-loop | Ignores the bot's own messages — no self-triggering even with "report own messages" enabled |
@@ -112,7 +113,7 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 |------|------|--------|
 | `possibility` | Draw hit rate; can be raised since the group cooldown acts as a cap | `0.02` |
 | `cooldown_seconds` | Minimum interval between two proactive replies in the same group (seconds); `0` disables | `180` |
-| `prompt_template` | Prompt sent to the LLM on trigger; placeholder `{message}` | See below |
+| `prompt_template` | Prompt sent to the LLM on trigger; placeholders `{message}`, `{sender}` | See below |
 
 ### Conversation Continuation
 
@@ -121,7 +122,7 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 | `continue_window_seconds` | Continuation window after an interaction (seconds); `0` disables continuation | `120` |
 | `continue_possibility` | Trigger probability within the window; `1.0` = always reply | `1.0` |
 | `continue_cooldown_seconds` | Minimum interval between two continuation replies for the same member (seconds) | `10` |
-| `continue_prompt_template` | Continuation prompt; placeholders `{message}`, `{member}` | See below |
+| `continue_prompt_template` | Continuation prompt; placeholders `{message}`, `{member}`, `{sender}` | See below |
 
 ### Keyword Reply
 
@@ -130,18 +131,22 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 | `keyword_list` | Keywords that trigger a reply on hit (e.g. the bot's nickname); empty = disabled | `[]` |
 | `keyword_possibility` | Trigger probability after a keyword hit | `1.0` |
 | `keyword_cooldown_seconds` | Minimum interval between two keyword replies for the same member (seconds) | `8` |
+| `keyword_prompt_template` | Keyword prompt; placeholders `{message}`, `{sender}` (always replies, no SKIP check) | See below |
 
 ### Misc
 
 | Option | Description | Default |
 |------|------|--------|
 | `ignore_when_chatting` | Occupancy guard: probability path stays silent while someone is within the continuation window | `true` |
+| `skip_marker` | Silent bail-out marker; the LLM outputs it to mean "this message isn't addressed to me" | `[SKIP]` |
 
 ### Default Prompts
 
-Probability path: tells the LLM "there is a message in the group chat that did not @ you", and asks it to reply naturally and briefly in its current persona — no customer-service tone, no essays.
+Probability path: tells the LLM "member {sender} posted a message without @-ing you", and asks it to **judge the addressee against the recent group-chat context** — if the message is a conversation with someone else, unrelated to the bot, or part of spam/meme floods, reply with `[SKIP]` only (the plugin silently drops it); otherwise reply naturally and briefly in its current persona.
 
-Continuation path: tells the LLM "you are in an ongoing conversation with a member" and asks it to continue the conversation. `{message}` is replaced with the triggering message text, and `{member}` with the member's nickname.
+Continuation path: tells the LLM "you are in an ongoing conversation with member {member}", with the same addressee check — if the follow-up message is actually aimed at someone else, reply with `[SKIP]` only; otherwise continue the conversation.
+
+Keyword path: tells the LLM "member {sender} mentioned your name in a message" and asks it to reply directly in its current persona (always replies, no SKIP check, so a genuine call-out is never misjudged as unrelated).
 
 ---
 
@@ -155,15 +160,19 @@ Group message arrives
    │
    ├─ Message directed at someone else (@ or quote) ──► ignored
    │
-   ├─ Keyword hit ──► member cooldown check ──► probability draw ──► reply
+   ├─ Keyword hit ──► member cooldown check ──► probability draw ──► reply (always, no SKIP check)
    │
-   ├─ Within continuation window ──► member cooldown check ──► probability draw ──► reply
+   ├─ Within continuation window ──► member cooldown check ──► probability draw ──► addressee check by LLM
+   │                                                                    ├─ unrelated ──► [SKIP], dropped silently
+   │                                                                    └─ related ──► reply
    │
    └─ Probability path ──► occupancy guard ──► group cooldown ──► probability draw
-                     ──► length/image check ──► reply
+                     ──► length/image check ──► addressee check by LLM
+                                                ├─ unrelated ──► [SKIP], dropped silently
+                                                └─ related ──► reply
 ```
 
-On trigger, the plugin calls `event.request_llm(...)` with the current persona and context; replies go through AstrBot's standard LLM pipeline and are recorded in the conversation history as usual.
+On trigger, the plugin calls `event.request_llm(...)` with the current persona and context; replies go through AstrBot's standard LLM pipeline and are recorded in the conversation history as usual. SKIP bail-outs are never sent and never written to conversation history — the group sees nothing at all.
 
 ### Rate-Control Details
 
@@ -198,6 +207,11 @@ On trigger, the plugin calls `event.request_llm(...)` with the current persona a
 ---
 
 ## Version History
+
+### v1.5.0
+- Added addressee check (SKIP silent bail-out): on the proactive/continuation paths the LLM reads recent group-chat context to decide whether a message is really addressed to the bot; unrelated messages are dropped silently (nothing sent, nothing stored) — no more replying to chatter that wasn't meant for it
+- Added a dedicated keyword prompt template `keyword_prompt_template`; always-reply semantics unchanged
+- Added the `skip_marker` option and `{sender}` placeholder support
 
 ### v1.4.1
 - Add a logo: new plugin icon `logo.png` so the AstrBot WebUI marketplace and plugin list show a custom icon

@@ -7,7 +7,7 @@
 **AstrBot 主动回复冷却限频插件：概率抽签 + 群级冷却 + 对话延续 + 关键词必回，让 Bot 像真人一样自然地混迹群聊。**
 
 ![AstrBot](https://img.shields.io/badge/AstrBot-%3E%3D4.17-5865f2?style=flat-square)
-![Version](https://img.shields.io/badge/version-1.4.1-22c55e?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.5.0-22c55e?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-aiocqhttp-f97316?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
@@ -42,7 +42,7 @@ AstrBot 原生的「群聊上下文感知 → 主动回复」只有一条**纯�
 - **概率调高** → 活跃群里疯狂插话，刷屏招人烦；
 - **概率调低** → Bot 几乎永远潜水，等于没开。
 
-本插件在概率抽签之上叠加**群级冷却**与**对话占用守卫**，并补上「对话延续」与「关键词必回」两条稳定触发路径，兼顾活跃度与克制感。
+本插件在概率抽签之上叠加**群级冷却**与**对话占用守卫**，并补上「对话延续」与「关键词必回」两条稳定触发路径；v1.5.0 起概率/延续路径还带有**指向性判定（SKIP）**——LLM 会结合近期群聊记录判断消息是否真的在跟你说话，无关话题自动静默跳过，不再乱接话。
 
 ---
 
@@ -50,14 +50,15 @@ AstrBot 原生的「群聊上下文感知 → 主动回复」只有一条**纯�
 
 | 触发路径 | 触发方式 | 频率控制 | 适用场景 |
 |----------|----------|----------|----------|
-| 🎲 概率主动回复 | 概率抽签命中 | 群级冷却（默认 180s）+ 占用守卫 | 偶尔自然接话，保持存在感 |
-| 💬 对话延续 | 成员 @/引用/唤醒 Bot 后，窗口期内的后续消息 | 成员级冷却（默认 10s），窗口内默认必回 | 追问不断片，聊得起来 |
-| 🔑 关键词必回 | 消息包含配置的关键词 | 成员级冷却（默认 8s），默认必回 | 被叫昵称必回应 |
+| 🎲 概率主动回复 | 概率抽签命中 | 群级冷却（默认 180s）+ 占用守卫 + SKIP 判定 | 偶尔自然接话，保持存在感 |
+| 💬 对话延续 | 成员 @/引用/唤醒 Bot 后，窗口期内的后续消息 | 成员级冷却（默认 10s），窗口内默认必回 + SKIP 判定 | 追问不断片，聊得起来 |
+| 🔑 关键词必回 | 消息包含配置的关键词 | 成员级冷却（默认 8s），默认必回（不做 SKIP 判定） | 被叫昵称必回应 |
 
 ### 其他内置守卫
 
 | 守卫 | 效果 |
 |------|------|
+| SKIP 静默跳过 | LLM 结合近期群聊记录判断消息是否指向自己，无关消息输出 `[SKIP]` 后插件静默放弃发送（群里无感、不进对话历史） |
 | 对话占用守卫 | 群内有人正与 Bot 对话时，概率路径静默，不插话无关内容 |
 | 指向他人过滤 | 消息 @ 了他人或引用他人消息时不插话（延续路径同样踢出） |
 | 防回环 | 忽略 Bot 自身消息，开启「上报自身消息」也不会自触发 |
@@ -112,7 +113,7 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 |------|------|--------|
 | `possibility` | 抽签命中率，有群级冷却兜底可适当调高 | `0.02` |
 | `cooldown_seconds` | 同群两次概率回复的最小间隔（秒），`0` 为关闭 | `180` |
-| `prompt_template` | 触发时发给 LLM 的提示词，支持 `{message}` 占位符 | 见下方 |
+| `prompt_template` | 触发时发给 LLM 的提示词，支持 `{message}`、`{sender}` 占位符 | 见下方 |
 
 ### 对话延续
 
@@ -121,7 +122,7 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 | `continue_window_seconds` | 交互后延续窗口时长（秒），`0` = 关闭延续 | `120` |
 | `continue_possibility` | 窗口内触发概率，`1.0` = 必回 | `1.0` |
 | `continue_cooldown_seconds` | 同一成员两次延续回复的最小间隔（秒） | `10` |
-| `continue_prompt_template` | 延续提示词，支持 `{message}`、`{member}` 占位符 | 见下方 |
+| `continue_prompt_template` | 延续提示词，支持 `{message}`、`{member}`、`{sender}` 占位符 | 见下方 |
 
 ### 关键词必回
 
@@ -130,18 +131,22 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 | `keyword_list` | 命中即回复的关键词（如机器人昵称），留空 = 不启用 | `[]` |
 | `keyword_possibility` | 命中后触发概率 | `1.0` |
 | `keyword_cooldown_seconds` | 同一成员两次关键词回复的最小间隔（秒） | `8` |
+| `keyword_prompt_template` | 关键词触发提示词，支持 `{message}`、`{sender}` 占位符（必回语义，无 SKIP 判定） | 见下方 |
 
 ### 其他
 
 | 配置 | 说明 | 默认值 |
 |------|------|--------|
 | `ignore_when_chatting` | 对话占用守卫：有人处于延续窗口时概率路径静默 | `true` |
+| `skip_marker` | 静默跳过标记，LLM 输出该标记表示判定消息不指向自己 | `[SKIP]` |
 
 ### 默认提示词
 
-概率路径：告知 LLM「群聊里有一条没有 @ 你的消息」，要求保持当前人设、自然简短地接一句，不带客服腔、不长篇大论。
+概率路径：告知 LLM「群成员【{sender}】发了一条没有 @ 你的消息」，要求**结合近期群聊记录判断指向性**——消息在跟别人聊、与你无关或群里刷屏/玩梗时只回复 `[SKIP]`（插件静默跳过，不发送）；确实适合搭话时再以当前人设自然接一句。
 
-延续路径：告知 LLM「正在和某成员持续对话」，要求延续当前对话、回应这个人。`{message}` 会替换为触发消息文本，`{member}` 会替换为成员昵称。
+延续路径：告知 LLM「正在和成员【{member}】持续对话」，同样带指向性判定——这条后续消息其实是在跟群里其他人说话时只回复 `[SKIP]`；否则延续对话回应这个人。
+
+关键词路径：告知 LLM「成员【{sender}】在消息里提到了你的名字」，直接以当前人设回应（必回，无 SKIP 判定，防止把真呼唤误判为无关）。
 
 ---
 
@@ -155,15 +160,19 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
    │
    ├─ 消息指向他人（@他人 / 引用他人）──► 忽略
    │
-   ├─ 命中关键词 ──► 成员级冷却检查 ──► 概率抽签 ──► 回复
+   ├─ 命中关键词 ──► 成员级冷却检查 ──► 概率抽签 ──► 回复（必回，无 SKIP 判定）
    │
-   ├─ 处于延续窗口 ──► 成员级冷却检查 ──► 概率抽签 ──► 回复
+   ├─ 处于延续窗口 ──► 成员级冷却检查 ──► 概率抽签 ──► LLM 指向性判定
+   │                                                  ├─ 无关 ──► [SKIP] 静默放弃
+   │                                                  └─ 相关 ──► 回复
    │
    └─ 走概率路径 ──► 对话占用守卫 ──► 群级冷却 ──► 概率抽签
-                     ──► 内容长度/图片检查 ──► 回复
+                     ──► 内容长度/图片检查 ──► LLM 指向性判定
+                                              ├─ 无关 ──► [SKIP] 静默放弃
+                                              └─ 相关 ──► 回复
 ```
 
-触发后，插件携带当前人格与上下文调用 `event.request_llm(...)`，回复走 AstrBot 标准 LLM 链路，并正常记入对话历史。
+触发后，插件携带当前人格与上下文调用 `event.request_llm(...)`，回复走 AstrBot 标准 LLM 链路，并正常记入对话历史。SKIP 跳过的请求不会发送、也不会写入对话历史，群里完全无感。
 
 ### 频率控制细节
 
@@ -198,6 +207,11 @@ git clone https://github.com/RandyLuaW/astrbot_plugin_active_reply_ctl.git
 ---
 
 ## 版本历史
+
+### v1.5.0
+- 新增指向性判定（SKIP 静默跳过）：概率/延续路径触发时，LLM 结合近期群聊记录判断消息是否真的在跟你说话，无关消息自动静默跳过（不发送、不进历史），治「分不清群消息是否指向 Bot」的乱接话
+- 新增关键词专用提示词模板 `keyword_prompt_template`，必回语义不变
+- 新增 `skip_marker` 配置项与 `{sender}` 占位符支持
 
 ### v1.4.1
 - 加个 logo：新增插件图标 `logo.png`，AstrBot WebUI 插件市场与插件列表显示自定义图标

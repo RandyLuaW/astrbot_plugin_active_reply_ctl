@@ -13,16 +13,23 @@ from __future__ import annotations
 import json
 import math
 import random
+import re
 import time
 from pathlib import Path
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.message_components import At, Image, Reply
+from astrbot.api.provider import LLMResponse
 from astrbot.api.star import Context, Star
 
-VERSION = "1.4.1"
+VERSION = "1.5.0"
 LEGACY_CONFIG_NAME = "config.json"  # 旧版独立配置文件，仅在 AstrBot 未注入配置时兜底
+
+# 通知 sender_tag 插件：本插件构造的 prompt 模板已自带说话人信息，勿再叠加前缀
+SENDER_TAG_SKIP_KEY = "sender_tag_skip"
+
+SKIP_EXACT_PATTERN = re.compile(r"^\[?\s*skip\s*\]?[.。!！~\s]*$", re.IGNORECASE)
 
 DEFAULT_CONFIG: dict = {
     "enable": True,
@@ -38,13 +45,22 @@ DEFAULT_CONFIG: dict = {
     "keyword_possibility": 1.0,  # 关键词命中触发概率（1.0 = 必回）
     "keyword_cooldown_seconds": 8,  # 关键词触发成员级冷却（防刷屏，不受群级冷却限制）
     "prompt_template": (
-        "群聊里有一条消息（没有@你）：\n{message}\n\n"
-        "请保持当前人设，自然、简短地接一句。不要客服腔、不要长篇大论。"
+        "群里成员【{sender}】发了一条消息，没有@你：\n{message}\n\n"
+        "结合上面注入的近期群聊记录判断：如果这条消息是在跟别人聊天、与你无关，"
+        "或群里正在刷屏/玩梗，就不要接话——只回复 [SKIP] 一个词。"
+        "如果确实适合你搭话，再以当前人设自然接一句，简短，不要客服腔、不要长篇大论。"
     ),
     "continue_prompt_template": (
         "你正在和群成员【{member}】持续对话中，这是他/她刚发来的后续消息（没有@你）：\n{message}\n\n"
-        "请延续你们正在进行的对话、回应这个人。保持当前人设，简短自然。不要客服腔。"
+        "结合上面注入的近期群聊记录判断：如果这条消息其实是在跟群里其他人说话、"
+        "不是在等你回应，只回复 [SKIP] 一个词；"
+        "否则延续你们正在进行的对话、回应这个人。保持当前人设，简短自然。不要客服腔。"
     ),
+    "keyword_prompt_template": (
+        "群里成员【{sender}】在消息里提到了你的名字（没有@你）：\n{message}\n\n"
+        "请以当前人设回应，简短自然，不要客服腔。"
+    ),
+    "skip_marker": "[SKIP]",  # LLM 输出该标记表示不接话（静默跳过，不发送）
 }
 
 CLEANUP_INTERVAL = 100  # 每命中 N 次清理一次过期冷却记录
@@ -101,6 +117,15 @@ class Main(Star):
                 DEFAULT_CONFIG["continue_prompt_template"],
             )
         )
+        self._keyword_prompt_template = str(
+            cfg.get(
+                "keyword_prompt_template",
+                DEFAULT_CONFIG["keyword_prompt_template"],
+            )
+        )
+
+        # 静默跳过标记（v1.5.0）：LLM 输出该标记表示判定消息不指向自己
+        self._skip_marker = str(cfg.get("skip_marker", "[SKIP]")).strip() or "[SKIP]"
 
         # 对话延续窗口
         try:
@@ -144,7 +169,7 @@ class Main(Star):
             f"冷却={self._cooldown}s｜延续窗口={self._continue_window}s@{self._continue_possibility}｜"
             f"延续冷却={self._continue_cooldown}s｜对话占用守卫="
             f"{'开' if self._ignore_when_chatting else '关'}｜"
-            f"关键词={self._keywords or '无'}｜"
+            f"关键词={self._keywords or '无'}｜SKIP标记={self._skip_marker}｜"
             f"{'启用' if self._enabled else '停用'}"
         )
 
@@ -322,7 +347,9 @@ class Main(Star):
 
         conversation = await self._get_conversation(event)
 
-        if in_continue:
+        if keyword_hit:
+            template = self._keyword_prompt_template
+        elif in_continue:
             template = self._continue_prompt_template
         else:
             template = self._prompt_template
@@ -331,9 +358,11 @@ class Main(Star):
             prompt = template.replace("{message}", text)
         else:
             prompt = text
+        sender_name = str(event.get_sender_name() or sender_id or "群成员")
+        if "{sender}" in prompt:
+            prompt = prompt.replace("{sender}", sender_name)
         if in_continue and "{member}" in prompt:
-            member_name = str(event.get_sender_name() or sender_id or "群成员")
-            prompt = prompt.replace("{member}", member_name)
+            prompt = prompt.replace("{member}", sender_name)
 
         image_urls: list[str] = []
         for img in images:
@@ -346,8 +375,48 @@ class Main(Star):
         logger.info(
             f"[active_reply_ctl] #{self._hit_count} {mode}触发｜群={gid}｜成员={sender_id}"
         )
+        # 通知 sender_tag 插件：本 prompt 已自带说话人信息，勿再叠加前缀
+        event.set_extra(SENDER_TAG_SKIP_KEY, True)
+        # SKIP 判定仅对带 SKIP 指示的路径生效；关键词路径必回（v1.2 语义），防误杀
+        event.set_extra("arp_skip_enabled", not keyword_hit)
         yield event.request_llm(
             prompt=prompt,
             image_urls=image_urls,
             conversation=conversation,
         )
+
+    @filter.on_llm_response()
+    async def on_llm_response(self, event: AstrMessageEvent, resp: LLMResponse):
+        """静默跳过（v1.5.0）：LLM 判定消息不指向自己时输出 SKIP 标记。
+
+        命中后清空回复文本并终止事件传播：
+        - respond 阶段跳过发送，群里无感（非流式模式可靠拦截）
+        - 会话历史不保存（AstrBot 对 stopped 事件不落历史）
+        - 同一事件后续 on_llm_response 钩子（如表情包补发）不再执行
+        """
+        if not self._enabled or not resp:
+            return
+        try:
+            # 关键词必回路径不做 SKIP 判定（prompt 未带 SKIP 指示，防误杀）
+            if not event.get_extra("arp_skip_enabled"):
+                return
+            text = (resp.completion_text or "").strip()
+            if not text:
+                return
+            marker = self._skip_marker.strip("[]").strip()
+            if marker.casefold() == "skip":
+                # 默认标记：宽容匹配 [SKIP]/SKIP/skip 等变体（防模型改写格式）
+                hit = bool(SKIP_EXACT_PATTERN.match(text))
+            else:
+                body = text.strip("[]").strip().rstrip(".。!！~").strip()
+                hit = body.casefold() == marker.casefold()
+            if not hit:
+                return
+            resp.completion_text = ""
+            event.stop_event()
+            logger.info(
+                f"[active_reply_ctl] LLM 判定消息不指向自己，静默跳过｜"
+                f"群={event.get_group_id()}｜成员={event.get_sender_id()}"
+            )
+        except Exception as e:
+            logger.error(f"[active_reply_ctl] SKIP 检测失败: {e}", exc_info=True)
